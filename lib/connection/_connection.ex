@@ -114,13 +114,7 @@ if Code.ensure_loaded?(Mssqlex) do
         end)
 
       {filters, _count} =
-        intersperse_reduce(filters, " AND ", count, fn
-          {field, nil}, acc ->
-            {[quote_name(field), " IS NULL"], acc}
-
-          {field, _value}, acc ->
-            {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
-        end)
+        intersperse_reduce(filters, " AND ", count, &condition_reducer/2)
 
       [
         "UPDATE ",
