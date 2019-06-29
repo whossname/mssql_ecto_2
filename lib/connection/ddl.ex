@@ -31,7 +31,7 @@ defmodule MssqlEcto.Connection.DDL do
      [table]}
   end
 
-  # execute dll
+  # execute dll (all MSSQL from here on)
   def execute({command, %Table{} = table, columns})
       when command in @creates do
     query = [

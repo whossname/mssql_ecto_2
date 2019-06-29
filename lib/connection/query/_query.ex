@@ -57,7 +57,6 @@ defmodule MssqlEcto.Connection.Query do
     ["DELETE FROM ", from, " AS ", name, join, where | returning(query, sources)]
   end
 
-
   def insert_as({%{sources: sources}, _, _}) do
     {_expr, name, _schema} = create_name(sources, 0)
     [" AS " | name]
@@ -308,7 +307,11 @@ defmodule MssqlEcto.Connection.Query do
 
     [
       " ORDER BY "
-      | intersperse_map(distinct ++ order_bys, ", ", &Expression.order_by_expr(&1, sources, query))
+      | intersperse_map(
+          distinct ++ order_bys,
+          ", ",
+          &Expression.order_by_expr(&1, sources, query)
+        )
     ]
   end
 
@@ -348,7 +351,8 @@ defmodule MssqlEcto.Connection.Query do
             {op, [acc, operator_to_boolean(op), Expression.paren_expr(expr, sources, query)]}
 
           %BooleanExpr{expr: expr, op: op}, {_, acc} ->
-            {op, [?(, acc, ?), operator_to_boolean(op), Expression.paren_expr(expr, sources, query)]}
+            {op,
+             [?(, acc, ?), operator_to_boolean(op), Expression.paren_expr(expr, sources, query)]}
         end)
         |> elem(1)
     ]
@@ -357,17 +361,27 @@ defmodule MssqlEcto.Connection.Query do
   defp operator_to_boolean(:and), do: " AND "
   defp operator_to_boolean(:or), do: " OR "
 
-  def returning(%{select: nil}, _sources),
-    do: []
+  def returning(%Ecto.Query{select: nil}, _sources, _), do: []
 
-  def returning(%{select: %{fields: fields}} = query, sources),
-    do: [" RETURNING " | select_fields(fields, sources, query)]
+  def returning(
+         %Ecto.Query{select: %{fields: fields}} = query,
+         _sources,
+         operation
+       ),
+       do: [
+         " OUTPUT "
+         | select_fields(fields, {{nil, operation, nil}}, query)
+       ]
 
-  def returning([]),
-    do: []
+  def returning([], _), do: []
 
-  def returning(returning),
-    do: [" RETURNING " | intersperse_map(returning, ", ", &quote_name/1)]
+  def returning(returning, operation),
+    do: [
+      " OUTPUT "
+      | Enum.map_join(returning, ", ", fn column ->
+          [operation, ?. | quote_name(column)]
+        end)
+    ]
 
   defp create_names(%{sources: sources}) do
     create_names(sources, 0, tuple_size(sources)) |> List.to_tuple()

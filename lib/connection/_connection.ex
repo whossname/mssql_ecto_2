@@ -83,15 +83,21 @@ if Code.ensure_loaded?(Mssqlex) do
         if header == [] do
           [" VALUES " | intersperse_map(rows, ?,, fn _ -> "(DEFAULT)" end)]
         else
-          [?\s, ?(, intersperse_map(header, ?,, &quote_name/1), ") VALUES " | Query.insert_all(rows, 1)]
+          [
+            ?\s,
+            ?(,
+            intersperse_map(header, ?,, &quote_name/1),
+            ") VALUES " | Query.insert_all(rows, 1)
+          ]
         end
 
       [
         "INSERT INTO ",
         quote_table(prefix, table),
+        Query.returning(returning, "INSERTED"),
         Query.insert_as(on_conflict),
         values,
-        Query.on_conflict(on_conflict, header) | Query.returning(returning)
+        Query.on_conflict(on_conflict, header)
       ]
     end
 
@@ -116,23 +122,35 @@ if Code.ensure_loaded?(Mssqlex) do
         quote_table(prefix, table),
         " SET ",
         fields,
+        Query.returning(returning, "INSERTED"),
         " WHERE ",
-        filters | Query.returning(returning)
+        filters
       ]
     end
 
     @impl true
     def delete(prefix, table, filters, returning) do
-      {filters, _} =
-        intersperse_reduce(filters, " AND ", 1, fn
-          {field, nil}, acc ->
-            {[quote_name(field), " IS NULL"], acc}
+      {filters, _} = intersperse_reduce(filters, " AND ", 1, &condition_reducer/2)
 
-          {field, _value}, acc ->
-            {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
-        end)
+      [
+        "DELETE FROM ",
+        quote_table(prefix, table),
+        Query.returning(returning, "DELETED"),
+        " WHERE ",
+        filters
+      ]
+    end
 
-      ["DELETE FROM ", quote_table(prefix, table), " WHERE ", filters | Query.returning(returning)]
+    defp condition_reducer({field, nil}, acc) do
+      {[quote_name(field), " IS NULL"], acc}
+    end
+
+    defp condition_reducer({field, _value}, acc) do
+      {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
+    end
+
+    defp condition_reducer(field, acc) do
+      {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
     end
 
     # DDL
