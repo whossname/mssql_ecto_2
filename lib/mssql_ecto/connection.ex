@@ -5,7 +5,7 @@ if Code.ensure_loaded?(Mssqlex) do
     @default_port 1433
     @behaviour Ecto.Adapters.SQL.Connection
 
-    alias MssqlEcto.Connection.{Constraints, Expression, DDL}
+    alias MssqlEcto.Connection.{Constraints, DDL, Query}
 
     import MssqlEcto.Connection.Helper
     require Logger
@@ -51,7 +51,7 @@ if Code.ensure_loaded?(Mssqlex) do
         {:ok, _, _} = ok ->
           ok
 
-        {:error, %Mssqlex.QueryError{} = err} ->
+        {:error, %Mssqlex.Error{} = err} ->
           {:reset, err}
 
         {:error, %Mssqlex.Error{odbc_code: :feature_not_supported} = err} ->
@@ -67,38 +67,15 @@ if Code.ensure_loaded?(Mssqlex) do
       Mssqlex.stream(conn, sql, params, opts)
     end
 
-    @impl true
-    def execute_ddl(args) do
-      DDL.execute(args)
-    end
-
     # query
     @impl true
     def all(query), do: Query.all(query)
 
     @impl true
-    def update_all(%{from: %{source: source}} = query, prefix \\ nil) do
-      sources = create_names(query)
-      {from, name} = get_source(query, sources, 0, source)
-
-      prefix = prefix || ["UPDATE ", from, " AS ", name | " SET "]
-      fields = update_fields(query, sources)
-      {join, wheres} = using_join(query, :update_all, "FROM", sources)
-      where = where(%{query | wheres: wheres ++ query.wheres}, sources)
-
-      [prefix, fields, join, where | returning(query, sources)]
-    end
+    def update_all(query, prefix \\ nil), do: Query.update_all(query, prefix)
 
     @impl true
-    def delete_all(%{from: from} = query) do
-      sources = create_names(query)
-      {from, name} = get_source(query, sources, 0, from)
-
-      {join, wheres} = using_join(query, :delete_all, "USING", sources)
-      where = where(%{query | wheres: wheres ++ query.wheres}, sources)
-
-      ["DELETE FROM ", from, " AS ", name, join, where | returning(query, sources)]
-    end
+    def delete_all(query), do: Query.delete_all(query)
 
     @impl true
     def insert(prefix, table, header, rows, on_conflict, returning) do
@@ -106,15 +83,15 @@ if Code.ensure_loaded?(Mssqlex) do
         if header == [] do
           [" VALUES " | intersperse_map(rows, ?,, fn _ -> "(DEFAULT)" end)]
         else
-          [?\s, ?(, intersperse_map(header, ?,, &quote_name/1), ") VALUES " | insert_all(rows, 1)]
+          [?\s, ?(, intersperse_map(header, ?,, &quote_name/1), ") VALUES " | Query.insert_all(rows, 1)]
         end
 
       [
         "INSERT INTO ",
         quote_table(prefix, table),
-        insert_as(on_conflict),
+        Query.insert_as(on_conflict),
         values,
-        on_conflict(on_conflict, header) | returning(returning)
+        Query.on_conflict(on_conflict, header) | Query.returning(returning)
       ]
     end
 
@@ -140,7 +117,7 @@ if Code.ensure_loaded?(Mssqlex) do
         " SET ",
         fields,
         " WHERE ",
-        filters | returning(returning)
+        filters | Query.returning(returning)
       ]
     end
 
@@ -155,7 +132,17 @@ if Code.ensure_loaded?(Mssqlex) do
             {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
         end)
 
-      ["DELETE FROM ", quote_table(prefix, table), " WHERE ", filters | returning(returning)]
+      ["DELETE FROM ", quote_table(prefix, table), " WHERE ", filters | Query.returning(returning)]
     end
+
+    # DDL
+    @impl true
+    def execute_ddl(args), do: DDL.execute(args)
+
+    @impl true
+    def ddl_logs(result), do: DDL.logs(result)
+
+    @impl true
+    def table_exists_query(table), do: DDL.table_exists_query(table)
   end
 end

@@ -1,5 +1,5 @@
 defmodule MssqlEcto.Connection.Helper do
-  alias MssqlEcto.Connection.Expression
+  alias MssqlEcto.Connection.Query.Expression
 
   def get_source(query, sources, ix, source) do
     {expr, name, _schema} = elem(sources, ix)

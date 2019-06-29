@@ -5,7 +5,6 @@ defmodule MssqlEcto.Connection.DDL do
   @creates [:create, :create_if_not_exists]
   @drops [:drop, :drop_if_exists]
 
-  @impl true
   def execute({command, %Table{} = table, columns}) when command in @creates do
     table_name = quote_table(table.prefix, table.name)
 
@@ -161,8 +160,7 @@ defmodule MssqlEcto.Connection.DDL do
   def execute(keyword) when is_list(keyword),
     do: error!(nil, "MSSQL adapter does not support keyword lists in execute")
 
-  @impl true
-  def ddl_logs(%Mssqlex.Result{} = result) do
+  def logs(%Mssqlex.Result{} = result) do
     %{messages: messages} = result
 
     for message <- messages do
@@ -172,7 +170,6 @@ defmodule MssqlEcto.Connection.DDL do
     end
   end
 
-  @impl true
   def table_exists_query(table) do
     {"SELECT true FROM information_schema.tables WHERE table_name = $1 AND table_schema = current_schema() LIMIT 1",
      [table]}

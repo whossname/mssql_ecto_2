@@ -1,7 +1,47 @@
-defmodule MssqlEcto.Connection.Expression do
-  alias MssqlEcto.Connection
-  alias Connection.{Constraints, Expression}
+defmodule MssqlEcto.Connection.Query.Expression do
+  alias MssqlEcto.Connection.Query
   import MssqlEcto.Connection.Helper
+
+  binary_ops = [
+    ==: " = ",
+    !=: " != ",
+    <=: " <= ",
+    >=: " >= ",
+    <: " < ",
+    >: " > ",
+    +: " + ",
+    -: " - ",
+    *: " * ",
+    /: " / ",
+    and: " AND ",
+    or: " OR ",
+    ilike: " ILIKE ",
+    like: " LIKE "
+  ]
+
+  @binary_ops Keyword.keys(binary_ops)
+
+  Enum.map(binary_ops, fn {op, str} ->
+    defp handle_call(unquote(op), 2), do: {:binary_op, unquote(str)}
+  end)
+
+  defp handle_call(fun, _arity), do: {:fun, Atom.to_string(fun)}
+
+  defp op_to_binary({op, _, [_, _]} = expr, sources, query) when op in @binary_ops do
+    paren_expr(expr, sources, query)
+  end
+
+  defp op_to_binary(expr, sources, query) do
+    expr(expr, sources, query)
+  end
+
+  def paren_expr(expr, sources, query) do
+    [?(, expr(expr, sources, query), ?)]
+  end
+
+  def expr(%Ecto.SubQuery{query: query}, _sources, _query) do
+    [?(, Query.all(query), ?)]
+  end
 
   def expr({:^, [], [ix]}, _sources, _query) do
     [?$ | Integer.to_string(ix + 1)]
@@ -41,10 +81,6 @@ defmodule MssqlEcto.Connection.Expression do
     ["NOT (", expr(expr, sources, query), ?)]
   end
 
-  def expr(%Ecto.SubQuery{query: query}, _sources, _query) do
-    [?(, Connection.all(query), ?)]
-  end
-
   def expr({:fragment, _, [kw]}, _sources, query) when is_list(kw) or tuple_size(kw) == 3 do
     error!(query, "PostgreSQL adapter does not support keyword or interpolated fragments")
   end
@@ -54,14 +90,14 @@ defmodule MssqlEcto.Connection.Expression do
       {:raw, part} -> part
       {:expr, expr} -> expr(expr, sources, query)
     end)
-    |> Connection.parens_for_select()
+    |> parens_for_select()
   end
 
   def expr({:datetime_add, _, [datetime, count, interval]}, sources, query) do
     [
       expr(datetime, sources, query),
       "::timestamp + ",
-      Connection.interval(count, interval, sources, query)
+      interval(count, interval, sources, query)
     ]
   end
 
@@ -70,7 +106,7 @@ defmodule MssqlEcto.Connection.Expression do
       ?(,
       expr(date, sources, query),
       "::date + ",
-      Connection.interval(count, interval, sources, query) | ")::date"
+      interval(count, interval, sources, query) | ")::date"
     ]
   end
 
@@ -86,7 +122,7 @@ defmodule MssqlEcto.Connection.Expression do
 
   def expr({:over, _, [agg, kw]}, sources, query) do
     aggregate = expr(agg, sources, query)
-    [aggregate, " OVER ", Connection.window_exprs(kw, sources, query)]
+    [aggregate, " OVER ", window_exprs(kw, sources, query)]
   end
 
   def expr({:{}, _, elems}, sources, query) do
@@ -102,7 +138,7 @@ defmodule MssqlEcto.Connection.Expression do
         _ -> {[], args}
       end
 
-    case Connection.handle_call(fun, length(args)) do
+    case handle_call(fun, length(args)) do
       {:binary_op, op} ->
         [left, right] = args
         [op_to_binary(left, sources, query), op | op_to_binary(right, sources, query)]
@@ -143,5 +179,67 @@ defmodule MssqlEcto.Connection.Expression do
 
   def expr(literal, _sources, _query) when is_float(literal) do
     [Float.to_string(literal) | "::float"]
+  end
+
+  defp parens_for_select([first_expr | _] = expr) do
+    if is_binary(first_expr) and String.starts_with?(first_expr, ["SELECT", "select"]) do
+      [?(, expr, ?)]
+    else
+      expr
+    end
+  end
+
+  defp interval(count, interval, _sources, _query) when is_integer(count) do
+    ["interval '", String.Chars.Integer.to_string(count), ?\s, interval, ?\']
+  end
+
+  defp interval(count, interval, _sources, _query) when is_float(count) do
+    count = :erlang.float_to_binary(count, [:compact, decimals: 16])
+    ["interval '", count, ?\s, interval, ?\']
+  end
+
+  defp interval(count, interval, sources, query) do
+    [
+      ?(,
+      expr(count, sources, query),
+      "::numeric * ",
+      interval(1, interval, sources, query),
+      ?)
+    ]
+  end
+
+  defp tagged_to_db({:array, type}), do: [tagged_to_db(type), ?[, ?]]
+  # Always use the largest possible type for integers
+  defp tagged_to_db(:id), do: "bigint"
+  defp tagged_to_db(:integer), do: "bigint"
+  defp tagged_to_db(type), do: ecto_to_db(type)
+
+  def window_exprs(kw, sources, query) do
+    [?(, intersperse_map(kw, ?\s, &window_expr(&1, sources, query)), ?)]
+  end
+
+  defp window_expr({:partition_by, fields}, sources, query) do
+    ["PARTITION BY " | intersperse_map(fields, ", ", &expr(&1, sources, query))]
+  end
+
+  defp window_expr({:order_by, fields}, sources, query) do
+    ["ORDER BY " | intersperse_map(fields, ", ", &order_by_expr(&1, sources, query))]
+  end
+
+  defp window_expr({:frame, {:fragment, _, _} = fragment}, sources, query) do
+    expr(fragment, sources, query)
+  end
+
+  def order_by_expr({dir, expr}, sources, query) do
+    str = expr(expr, sources, query)
+
+    case dir do
+      :asc -> str
+      :asc_nulls_last -> [str | " ASC NULLS LAST"]
+      :asc_nulls_first -> [str | " ASC NULLS FIRST"]
+      :desc -> [str | " DESC"]
+      :desc_nulls_last -> [str | " DESC NULLS LAST"]
+      :desc_nulls_first -> [str | " DESC NULLS FIRST"]
+    end
   end
 end

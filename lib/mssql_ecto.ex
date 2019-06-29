@@ -11,7 +11,7 @@ defmodule MssqlEcto do
   @default_maintenance_database "mssql"
 
   @doc """
-  All Ecto extensions for Postgrex.
+  All Ecto extensions for Mssqlex.
   """
   def extensions do
     []
@@ -145,9 +145,9 @@ defmodule MssqlEcto do
     {:ok, pid} = Task.Supervisor.start_link
 
     task = Task.Supervisor.async_nolink(pid, fn ->
-      {:ok, conn} = Postgrex.start_link(opts)
+      {:ok, conn} = Mssqlex.start_link(opts)
 
-      value = Postgrex.query(conn, sql, [], opts)
+      value = Mssqlex.query(conn, sql, [], opts)
       GenServer.stop(conn)
       value
     end)
@@ -160,7 +160,7 @@ defmodule MssqlEcto do
       {:ok, {:error, error}} ->
         {:error, error}
       {:exit, {%{__struct__: struct} = error, _}}
-          when struct in [Postgrex.Error, DBConnection.Error] ->
+          when struct in [Mssqlex.Error, DBConnection.Error] ->
         {:error, error}
       {:exit, reason}  ->
         {:error, RuntimeError.exception(Exception.format_exit(reason))}

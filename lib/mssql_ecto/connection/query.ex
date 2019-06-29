@@ -1,5 +1,6 @@
 defmodule MssqlEcto.Connection.Query do
   alias Ecto.Query.{BooleanExpr, JoinExpr, QueryExpr}
+  alias MssqlEcto.Connection.Query.Expression
   import MssqlEcto.Connection.Helper
 
   def all(query) do
@@ -34,25 +35,48 @@ defmodule MssqlEcto.Connection.Query do
     ]
   end
 
-  defp insert_as({%{sources: sources}, _, _}) do
+  def update_all(%{from: %{source: source}} = query, prefix) do
+    sources = create_names(query)
+    {from, name} = get_source(query, sources, 0, source)
+
+    prefix = prefix || ["UPDATE ", from, " AS ", name | " SET "]
+    fields = update_fields(query, sources)
+    {join, wheres} = using_join(query, :update_all, "FROM", sources)
+    where = where(%{query | wheres: wheres ++ query.wheres}, sources)
+
+    [prefix, fields, join, where | returning(query, sources)]
+  end
+
+  def delete_all(%{from: from} = query) do
+    sources = create_names(query)
+    {from, name} = get_source(query, sources, 0, from)
+
+    {join, wheres} = using_join(query, :delete_all, "USING", sources)
+    where = where(%{query | wheres: wheres ++ query.wheres}, sources)
+
+    ["DELETE FROM ", from, " AS ", name, join, where | returning(query, sources)]
+  end
+
+
+  def insert_as({%{sources: sources}, _, _}) do
     {_expr, name, _schema} = create_name(sources, 0)
     [" AS " | name]
   end
 
-  defp insert_as({_, _, _}) do
+  def insert_as({_, _, _}) do
     []
   end
 
-  defp on_conflict({:raise, _, []}, _header),
+  def on_conflict({:raise, _, []}, _header),
     do: []
 
-  defp on_conflict({:nothing, _, targets}, _header),
+  def on_conflict({:nothing, _, targets}, _header),
     do: [" ON CONFLICT ", conflict_target(targets) | "DO NOTHING"]
 
-  defp on_conflict({fields, _, targets}, _header) when is_list(fields),
+  def on_conflict({fields, _, targets}, _header) when is_list(fields),
     do: [" ON CONFLICT ", conflict_target(targets), "DO " | replace(fields)]
 
-  defp on_conflict({query, _, targets}, _header),
+  def on_conflict({query, _, targets}, _header),
     do: [" ON CONFLICT ", conflict_target(targets), "DO " | update_all(query, "UPDATE SET ")]
 
   defp conflict_target({:constraint, constraint}),
@@ -77,7 +101,7 @@ defmodule MssqlEcto.Connection.Query do
     ]
   end
 
-  defp insert_all(rows, counter) do
+  def insert_all(rows, counter) do
     intersperse_reduce(rows, ?,, counter, fn row, counter ->
       {row, counter} = insert_each(row, counter)
       {[?(, row, ?)], counter}
@@ -99,31 +123,6 @@ defmodule MssqlEcto.Connection.Query do
   end
 
   ## Query generation
-
-  binary_ops = [
-    ==: " = ",
-    !=: " != ",
-    <=: " <= ",
-    >=: " >= ",
-    <: " < ",
-    >: " > ",
-    +: " + ",
-    -: " - ",
-    *: " * ",
-    /: " / ",
-    and: " AND ",
-    or: " OR ",
-    ilike: " ILIKE ",
-    like: " LIKE "
-  ]
-
-  @binary_ops Keyword.keys(binary_ops)
-
-  Enum.map(binary_ops, fn {op, str} ->
-    defp handle_call(unquote(op), 2), do: {:binary_op, unquote(str)}
-  end)
-
-  defp handle_call(fun, _arity), do: {:fun, Atom.to_string(fun)}
 
   defp select(%{select: %{fields: fields}} = query, select_distinct, sources) do
     ["SELECT", select_distinct, ?\s | select_fields(fields, sources, query)]
@@ -150,7 +149,7 @@ defmodule MssqlEcto.Connection.Query do
   defp distinct(%QueryExpr{expr: exprs}, sources, query) do
     {[
        " DISTINCT ON (",
-       intersperse_map(exprs, ", ", fn {_, expr} -> expr(expr, sources, query) end),
+       intersperse_map(exprs, ", ", fn {_, expr} -> Expression.expr(expr, sources, query) end),
        ?)
      ], exprs}
   end
@@ -302,22 +301,6 @@ defmodule MssqlEcto.Connection.Query do
     ]
   end
 
-  defp window_exprs(kw, sources, query) do
-    [?(, intersperse_map(kw, ?\s, &window_expr(&1, sources, query)), ?)]
-  end
-
-  defp window_expr({:partition_by, fields}, sources, query) do
-    ["PARTITION BY " | intersperse_map(fields, ", ", &Expression.expr(&1, sources, query))]
-  end
-
-  defp window_expr({:order_by, fields}, sources, query) do
-    ["ORDER BY " | intersperse_map(fields, ", ", &order_by_expr(&1, sources, query))]
-  end
-
-  defp window_expr({:frame, {:fragment, _, _} = fragment}, sources, query) do
-    Expression.expr(fragment, sources, query)
-  end
-
   defp order_by(%{order_bys: []}, _distinct, _sources), do: []
 
   defp order_by(%{order_bys: order_bys} = query, distinct, sources) do
@@ -325,21 +308,8 @@ defmodule MssqlEcto.Connection.Query do
 
     [
       " ORDER BY "
-      | intersperse_map(distinct ++ order_bys, ", ", &order_by_expr(&1, sources, query))
+      | intersperse_map(distinct ++ order_bys, ", ", &Expression.order_by_expr(&1, sources, query))
     ]
-  end
-
-  defp order_by_expr({dir, expr}, sources, query) do
-    str = Expression.expr(expr, sources, query)
-
-    case dir do
-      :asc -> str
-      :asc_nulls_last -> [str | " ASC NULLS LAST"]
-      :asc_nulls_first -> [str | " ASC NULLS FIRST"]
-      :desc -> [str | " DESC"]
-      :desc_nulls_last -> [str | " DESC NULLS LAST"]
-      :desc_nulls_first -> [str | " DESC NULLS FIRST"]
-    end
   end
 
   defp limit(%{limit: nil}, _sources), do: []
@@ -373,12 +343,12 @@ defmodule MssqlEcto.Connection.Query do
   defp boolean(name, [%{expr: expr, op: op} | query_exprs], sources, query) do
     [
       name
-      | Enum.reduce(query_exprs, {op, paren_expr(expr, sources, query)}, fn
+      | Enum.reduce(query_exprs, {op, Expression.paren_expr(expr, sources, query)}, fn
           %BooleanExpr{expr: expr, op: op}, {op, acc} ->
-            {op, [acc, operator_to_boolean(op), paren_expr(expr, sources, query)]}
+            {op, [acc, operator_to_boolean(op), Expression.paren_expr(expr, sources, query)]}
 
           %BooleanExpr{expr: expr, op: op}, {_, acc} ->
-            {op, [?(, acc, ?), operator_to_boolean(op), paren_expr(expr, sources, query)]}
+            {op, [?(, acc, ?), operator_to_boolean(op), Expression.paren_expr(expr, sources, query)]}
         end)
         |> elem(1)
     ]
@@ -387,61 +357,16 @@ defmodule MssqlEcto.Connection.Query do
   defp operator_to_boolean(:and), do: " AND "
   defp operator_to_boolean(:or), do: " OR "
 
-  defp parens_for_select([first_expr | _] = expr) do
-    if is_binary(first_expr) and String.starts_with?(first_expr, ["SELECT", "select"]) do
-      [?(, expr, ?)]
-    else
-      expr
-    end
-  end
-
-  defp paren_expr(expr, sources, query) do
-    [?(, Expression.expr(expr, sources, query), ?)]
-  end
-
-  defp tagged_to_db({:array, type}), do: [tagged_to_db(type), ?[, ?]]
-  # Always use the largest possible type for integers
-  defp tagged_to_db(:id), do: "bigint"
-  defp tagged_to_db(:integer), do: "bigint"
-  defp tagged_to_db(type), do: ecto_to_db(type)
-
-  defp interval(count, interval, _sources, _query) when is_integer(count) do
-    ["interval '", String.Chars.Integer.to_string(count), ?\s, interval, ?\']
-  end
-
-  defp interval(count, interval, _sources, _query) when is_float(count) do
-    count = :erlang.float_to_binary(count, [:compact, decimals: 16])
-    ["interval '", count, ?\s, interval, ?\']
-  end
-
-  defp interval(count, interval, sources, query) do
-    [
-      ?(,
-      Expression.expr(count, sources, query),
-      "::numeric * ",
-      interval(1, interval, sources, query),
-      ?)
-    ]
-  end
-
-  defp op_to_binary({op, _, [_, _]} = expr, sources, query) when op in @binary_ops do
-    paren_expr(expr, sources, query)
-  end
-
-  defp op_to_binary(expr, sources, query) do
-    Expression.expr(expr, sources, query)
-  end
-
-  defp returning(%{select: nil}, _sources),
+  def returning(%{select: nil}, _sources),
     do: []
 
-  defp returning(%{select: %{fields: fields}} = query, sources),
+  def returning(%{select: %{fields: fields}} = query, sources),
     do: [" RETURNING " | select_fields(fields, sources, query)]
 
-  defp returning([]),
+  def returning([]),
     do: []
 
-  defp returning(returning),
+  def returning(returning),
     do: [" RETURNING " | intersperse_map(returning, ", ", &quote_name/1)]
 
   defp create_names(%{sources: sources}) do
