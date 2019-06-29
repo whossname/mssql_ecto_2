@@ -151,7 +151,7 @@ if Code.ensure_loaded?(Mssqlex) do
     end
 
     defp condition_reducer({field, _value}, acc) do
-      {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
+      {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
     end
 
     defp condition_reducer(field, acc) do

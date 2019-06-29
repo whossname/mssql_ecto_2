@@ -128,7 +128,7 @@ defmodule MssqlEcto.Connection.Query do
   end
 
   defp select_fields([], _sources, _query),
-    do: "TRUE"
+    do: "'TRUE'"
 
   defp select_fields(fields, sources, query) do
     intersperse_map(fields, ", ", fn
@@ -154,12 +154,18 @@ defmodule MssqlEcto.Connection.Query do
   end
 
   defp from(%{from: %{hints: [_ | _]}} = query, _sources) do
-    error!(query, "table hints are not supported by PostgreSQL")
+    error!(query, "table hints are not implemented")
   end
 
-  defp from(%{from: %{source: source}} = query, sources) do
+  defp from(%{from: %{source: source}, prefix: nil} = query, sources) do
     {from, name} = get_source(query, sources, 0, source)
     [" FROM ", from, " AS " | name]
+  end
+
+  defp from(%{from: %{source: source}, prefix: prefix} = query, sources) do
+    prefix = quote_name(prefix)
+    {from, name} = get_source(query, sources, 0, source)
+    [" FROM ", prefix, ".", from, " AS " | name]
   end
 
   defp update_fields(%{updates: updates} = query, sources) do
@@ -251,15 +257,20 @@ defmodule MssqlEcto.Connection.Query do
             end
 
             {join, name} = get_source(query, sources, ix, source)
-            [join_qual(qual), join, " AS ", name | join_on(qual, expr, sources, query)]
+
+            prefix = query.prefix
+            if is_nil(prefix) do
+              [join_qual(qual), join, " AS ", name | join_on(qual, expr, sources, query)]
+            else
+              prefix = quote_name(query.prefix)
+              [join_qual(qual), prefix, ".", join, " AS ", name | join_on(qual, expr, sources, query)]
+            end
         end)
     ]
   end
 
-  defp join_on(:cross, true, _sources, _query), do: []
-
   defp join_on(_qual, expr, sources, query),
-    do: [" ON " | Expression.expr(expr, sources, query)]
+    do: [" ON (", Expression.expr(expr, sources, query), ")"]
 
   defp join_qual(:inner), do: "INNER JOIN "
   defp join_qual(:inner_lateral), do: "INNER JOIN LATERAL "
@@ -364,14 +375,14 @@ defmodule MssqlEcto.Connection.Query do
   def returning(%Ecto.Query{select: nil}, _sources, _), do: []
 
   def returning(
-         %Ecto.Query{select: %{fields: fields}} = query,
-         _sources,
-         operation
-       ),
-       do: [
-         " OUTPUT "
-         | select_fields(fields, {{nil, operation, nil}}, query)
-       ]
+        %Ecto.Query{select: %{fields: fields}} = query,
+        _sources,
+        operation
+      ),
+      do: [
+        " OUTPUT "
+        | select_fields(fields, {{nil, operation, nil}}, query)
+      ]
 
   def returning([], _), do: []
 

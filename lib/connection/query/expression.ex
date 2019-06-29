@@ -44,7 +44,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr({:^, [], [ix]}, _sources, _query) do
-    [?$ | Integer.to_string(ix + 1)]
+    [?? | Integer.to_string(ix + 1)]
   end
 
   def expr({{:., _, [{:&, _, [idx]}, field]}, _, []}, sources, _query) when is_atom(field) do
@@ -66,7 +66,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr({:in, _, [left, {:^, _, [ix, _]}]}, sources, query) do
-    [expr(left, sources, query), " = ANY($", Integer.to_string(ix + 1), ?)]
+    [expr(left, sources, query), " = ANY(?", Integer.to_string(ix + 1), ?)]
   end
 
   def expr({:in, _, [left, right]}, sources, query) do
@@ -166,7 +166,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr(nil, _sources, _query), do: "NULL"
-  def expr(true, _sources, _query), do: "TRUE"
+  def expr(true, _sources, _query), do: "1=1"
   def expr(false, _sources, _query), do: "FALSE"
 
   def expr(literal, _sources, _query) when is_binary(literal) do
