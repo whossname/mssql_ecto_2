@@ -81,20 +81,25 @@ if Code.ensure_loaded?(Mssqlex) do
     def insert(prefix, table, header, rows, on_conflict, returning) do
       values =
         if header == [] do
-          [" VALUES " | intersperse_map(rows, ?,, fn _ -> "(DEFAULT)" end)]
+          [
+            Query.returning(returning, "INSERTED"),
+            " DEFAULT VALUES "
+            | intersperse_map(rows, ?,, fn _ -> "" end)
+          ]
         else
           [
             ?\s,
             ?(,
             intersperse_map(header, ?,, &quote_name/1),
-            ") VALUES " | Query.insert_all(rows, 1)
+            ")",
+            Query.returning(returning, "INSERTED"),
+            " VALUES " | Query.insert_all(rows, 1)
           ]
         end
 
       [
         "INSERT INTO ",
         quote_table(prefix, table),
-        Query.returning(returning, "INSERTED"),
         Query.insert_as(on_conflict),
         values,
         Query.on_conflict(on_conflict, header)
@@ -105,7 +110,7 @@ if Code.ensure_loaded?(Mssqlex) do
     def update(prefix, table, fields, filters, returning) do
       {fields, count} =
         intersperse_reduce(fields, ", ", 1, fn field, acc ->
-          {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
+          {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
         end)
 
       {filters, _count} =
@@ -114,7 +119,7 @@ if Code.ensure_loaded?(Mssqlex) do
             {[quote_name(field), " IS NULL"], acc}
 
           {field, _value}, acc ->
-            {[quote_name(field), " = $" | Integer.to_string(acc)], acc + 1}
+            {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
         end)
 
       [
