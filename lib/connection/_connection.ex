@@ -44,7 +44,7 @@ if Code.ensure_loaded?(Mssqlex) do
 
     @impl true
     def execute(conn, %{ref: ref} = query, params, opts) do
-      case Mssqlex.execute(conn, query, params, opts) do
+      case DBConnection.execute(conn, query, params, opts) do
         {:ok, %{ref: ^ref}, result} ->
           {:ok, result}
 

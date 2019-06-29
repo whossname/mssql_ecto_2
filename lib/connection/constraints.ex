@@ -2,6 +2,7 @@ defmodule MssqlEcto.Connection.Constraints do
   def to_constraints(_code, _msg, constraint),
     do: [unique: constraint]
 
+  """
   def to_constraints(_code, _msg, constraint),
     do: [foreign_key: constraint]
 
@@ -10,6 +11,7 @@ defmodule MssqlEcto.Connection.Constraints do
 
   def to_constraints(_code, _msg, constraint),
     do: [check: constraint]
+  """
 
     """
   # Postgres 9.2 and earlier does not provide the constraint field

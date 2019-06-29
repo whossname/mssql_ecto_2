@@ -11,7 +11,7 @@ defmodule MssqlEcto.Mixfile do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      test_paths: ["integration/mssql", "test"],
+      test_paths: ["test"], #"integration/mssql",
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         "test.integration": :test,
