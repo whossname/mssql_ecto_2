@@ -1,4 +1,4 @@
-# MssqlEcto2
+# MssqlEcto
 
 **TODO: Add description**
 
