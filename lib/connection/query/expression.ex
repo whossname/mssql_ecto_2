@@ -79,7 +79,6 @@ defmodule MssqlEcto.Connection.Query.Expression do
     intersperse_map(fields, ", ", &[name, ?. | quote_name(&1)])
   end
 
-
   def expr({:in, _, [_left, []]}, _sources, _query) do
     "0=1"
   end
@@ -234,7 +233,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
 
   defp tagged_to_db({:array, type}), do: [tagged_to_db(type), ?[, ?]]
   # Always use the largest possible type for integers
-  defp tagged_to_db(:id), do: "bigint"
+  defp tagged_to_db(:id), do: "int"
   defp tagged_to_db(:integer), do: "int"
   defp tagged_to_db(type), do: ecto_to_db(type)
 

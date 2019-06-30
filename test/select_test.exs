@@ -460,8 +460,8 @@ defmodule MssqlEcto.SelectTest do
     query =
       Schema
       |> select([], type(^1, Custom.Permalink))
-      |> SQL.all()
       |> parse()
+
     assert query == ~s{SELECT CAST(?1 AS int) FROM "schema" AS s0}
   end
 

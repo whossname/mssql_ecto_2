@@ -1,5 +1,6 @@
 defmodule MssqlEcto.Connection.Query do
-  alias Ecto.Query.{BooleanExpr, JoinExpr, QueryExpr}
+  alias Ecto.Query
+  alias Query.{BooleanExpr, JoinExpr, QueryExpr}
   alias MssqlEcto.Connection.Query.Expression
   import MssqlEcto.Connection.Helper
 
@@ -121,7 +122,7 @@ defmodule MssqlEcto.Connection.Query do
       nil, counter ->
         {"DEFAULT", counter}
 
-      {%Ecto.Query{} = query, params_counter}, counter ->
+      {%Query{} = query, params_counter}, counter ->
         {[?(, all(query), ?)], counter + params_counter}
 
       _, counter ->
@@ -344,16 +345,41 @@ defmodule MssqlEcto.Connection.Query do
     ]
   end
 
-  defp top(%{limit: nil}, _sources), do: []
-
-  defp top(%{limit: %QueryExpr{expr: expr}} = query, sources) do
-    [" TOP " | Expression.expr(expr, sources, query)]
+  def top(%Query{offset: nil, limit: %QueryExpr{expr: expr}} = query, sources) do
+    [" TOP ", Expression.expr(expr, sources, query)]
   end
 
-  defp offset(%{offset: nil}, _sources), do: []
+  def top(_, _) do
+    []
+  end
 
-  defp offset(%{offset: %QueryExpr{expr: expr}} = query, sources) do
-    [" OFFSET ", Expression.expr(expr, sources, query) | " ROWS"]
+  def offset(%Query{offset: nil, limit: nil}, _sources), do: []
+
+  def offset(
+        %Query{offset: nil, limit: %QueryExpr{expr: _expr}} = _query,
+        _sources
+      ) do
+    []
+  end
+
+  def offset(
+        %Query{
+          offset: %QueryExpr{expr: offset_expr},
+          limit: %QueryExpr{expr: limit_expr}
+        } = query,
+        sources
+      ) do
+    [
+      " OFFSET ",
+      Expression.expr(offset_expr, sources, query),
+      " ROWS FETCH NEXT ",
+      Expression.expr(limit_expr, sources, query),
+      " ROWS ONLY"
+    ]
+  end
+
+  def offset(%Query{offset: %QueryExpr{expr: expr}} = query, sources) do
+    [" OFFSET ", Expression.expr(expr, sources, query), " ROWS"]
   end
 
   defp combinations(%{combinations: combinations}) do
