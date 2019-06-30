@@ -37,13 +37,23 @@ defmodule MssqlEcto.Connection.Query do
   def update_all(%{from: %{source: source}} = query, prefix) do
     sources = create_names(query)
     {from, name} = get_source(query, sources, 0, source)
+    from = prefix_name(from, query)
 
-    prefix = prefix || ["UPDATE ", from, " AS ", name | " SET "]
+    prefix = prefix || ["UPDATE ", name | " SET "]
+    table_alias = [" FROM ", from, " AS ", name]
+
     fields = update_fields(query, sources)
     {join, wheres} = using_join(query, "FROM", sources)
     where = where(%{query | wheres: wheres ++ query.wheres}, sources)
 
-    [prefix, fields, join, where | returning(query, sources)]
+    [
+      prefix,
+      fields,
+      output(query, sources, "INSERTED"),
+      table_alias,
+      join,
+      where
+    ]
   end
 
   def delete_all(%{from: from} = query) do
@@ -286,6 +296,13 @@ defmodule MssqlEcto.Connection.Query do
             end
         end)
     ]
+  end
+
+  defp prefix_name(name, %{prefix: nil}), do: [name]
+
+  defp prefix_name(name, %{prefix: prefix}) do
+    prefix = quote_name(prefix)
+    [prefix, ".", name]
   end
 
   defp join_on(_qual, expr, sources, query),
