@@ -7,8 +7,8 @@ defmodule MssqlEcto.Connection.Query do
     sources = create_names(query)
     {select_distinct, order_by_distinct} = distinct(query.distinct, sources, query)
 
-    from = from(query, sources)
     select = select(query, select_distinct, sources)
+    from = from(query, sources)
     join = join(query, sources)
     where = where(query, sources)
     group_by = group_by(query, sources)
@@ -16,7 +16,6 @@ defmodule MssqlEcto.Connection.Query do
     window = window(query, sources)
     combinations = combinations(query)
     order_by = order_by(query, order_by_distinct, sources)
-    limit = limit(query, sources)
     offset = offset(query, sources)
     lock = lock(query.lock)
 
@@ -30,7 +29,6 @@ defmodule MssqlEcto.Connection.Query do
       window,
       combinations,
       order_by,
-      limit,
       offset | lock
     ]
   end
@@ -134,7 +132,8 @@ defmodule MssqlEcto.Connection.Query do
   ## Query generation
 
   defp select(%{select: %{fields: fields}} = query, select_distinct, sources) do
-    ["SELECT", select_distinct, ?\s | select_fields(fields, sources, query)]
+    top = top(query, sources)
+    ["SELECT", top, select_distinct, ?\s | select_fields(fields, sources, query)]
   end
 
   defp select_fields([], _sources, _query),
@@ -345,16 +344,16 @@ defmodule MssqlEcto.Connection.Query do
     ]
   end
 
-  defp limit(%{limit: nil}, _sources), do: []
+  defp top(%{limit: nil}, _sources), do: []
 
-  defp limit(%{limit: %QueryExpr{expr: expr}} = query, sources) do
-    [" LIMIT " | Expression.expr(expr, sources, query)]
+  defp top(%{limit: %QueryExpr{expr: expr}} = query, sources) do
+    [" TOP " | Expression.expr(expr, sources, query)]
   end
 
   defp offset(%{offset: nil}, _sources), do: []
 
   defp offset(%{offset: %QueryExpr{expr: expr}} = query, sources) do
-    [" OFFSET " | Expression.expr(expr, sources, query)]
+    [" OFFSET ", Expression.expr(expr, sources, query) | " ROWS"]
   end
 
   defp combinations(%{combinations: combinations}) do

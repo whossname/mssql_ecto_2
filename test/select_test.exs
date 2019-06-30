@@ -625,7 +625,7 @@ defmodule MssqlEcto.SelectTest do
       |> order_by([], ^:x)
       |> limit([], ^4)
       |> offset([], ^5)
-      |> normalize
+      |> parse()
 
     result =
       ~s/SELECT s0."id", ?1 FROM "schema" AS s0 INNER JOIN "schema2" AS s1 ON (?2) / <>
@@ -633,7 +633,7 @@ defmodule MssqlEcto.SelectTest do
         ~s/GROUP BY ?6, ?7 HAVING (?8) AND (?9) / <>
         ~s/ORDER BY ?10, s0."x" OFFSET ?12 ROWS FETCH NEXT ?11 ROWS ONLY/
 
-    assert SQL.all(query) == String.trim(result)
+    assert query == String.trim(result)
   end
 
   test "fragments and types" do

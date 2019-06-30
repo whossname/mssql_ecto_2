@@ -186,7 +186,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr(%Ecto.Query.Tagged{value: other, type: type}, sources, query) do
-    [expr(other, sources, query), ?:, ?: | tagged_to_db(type)]
+    ["CAST(", expr(other, sources, query), " AS ", tagged_to_db(type) | ")"]
   end
 
   def expr(nil, _sources, _query), do: "NULL"
@@ -235,7 +235,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   defp tagged_to_db({:array, type}), do: [tagged_to_db(type), ?[, ?]]
   # Always use the largest possible type for integers
   defp tagged_to_db(:id), do: "bigint"
-  defp tagged_to_db(:integer), do: "bigint"
+  defp tagged_to_db(:integer), do: "int"
   defp tagged_to_db(type), do: ecto_to_db(type)
 
   def window_exprs(kw, sources, query) do
