@@ -82,7 +82,7 @@ if Code.ensure_loaded?(Mssqlex) do
       values =
         if header == [] do
           [
-            Query.returning(returning, "INSERTED"),
+            Query.output(returning, "INSERTED"),
             " DEFAULT VALUES "
             | intersperse_map(rows, ?,, fn _ -> "" end)
           ]
@@ -92,7 +92,7 @@ if Code.ensure_loaded?(Mssqlex) do
             ?(,
             intersperse_map(header, ?,, &quote_name/1),
             ")",
-            Query.returning(returning, "INSERTED"),
+            Query.output(returning, "INSERTED"),
             " VALUES " | Query.insert_all(rows, 1)
           ]
         end
@@ -121,7 +121,7 @@ if Code.ensure_loaded?(Mssqlex) do
         quote_table(prefix, table),
         " SET ",
         fields,
-        Query.returning(returning, "INSERTED"),
+        Query.output(returning, "INSERTED"),
         " WHERE ",
         filters
       ]
@@ -134,7 +134,7 @@ if Code.ensure_loaded?(Mssqlex) do
       [
         "DELETE FROM ",
         quote_table(prefix, table),
-        Query.returning(returning, "DELETED"),
+        Query.output(returning, "DELETED"),
         " WHERE ",
         filters
       ]

@@ -41,7 +41,7 @@ defmodule MssqlEcto.Connection.Query do
 
     prefix = prefix || ["UPDATE ", from, " AS ", name | " SET "]
     fields = update_fields(query, sources)
-    {join, wheres} = using_join(query, :update_all, "FROM", sources)
+    {join, wheres} = using_join(query, "FROM", sources)
     where = where(%{query | wheres: wheres ++ query.wheres}, sources)
 
     [prefix, fields, join, where | returning(query, sources)]
@@ -51,10 +51,20 @@ defmodule MssqlEcto.Connection.Query do
     sources = create_names(query)
     {from, name} = get_source(query, sources, 0, from)
 
-    {join, wheres} = using_join(query, :delete_all, "USING", sources)
+    {join, wheres} = using_join(query, "INNER JOIN", sources)
     where = where(%{query | wheres: wheres ++ query.wheres}, sources)
 
-    ["DELETE FROM ", from, " AS ", name, join, where | returning(query, sources)]
+    [
+      "DELETE ",
+      name,
+      output(query, sources, "DELETED"),
+      " FROM ",
+      from,
+      " AS ",
+      name,
+      join,
+      where
+    ]
   end
 
   def insert_as({%{sources: sources}, _, _}) do
@@ -218,9 +228,9 @@ defmodule MssqlEcto.Connection.Query do
     error!(query, "unknown update operation #{inspect(command)} for PostgreSQL")
   end
 
-  defp using_join(%{joins: []}, _kind, _prefix, _sources), do: {[], []}
+  defp using_join(%{joins: []}, _prefix, _sources), do: {[], []}
 
-  defp using_join(%{joins: joins} = query, kind, prefix, sources) do
+  defp using_join(%{joins: joins} = query, prefix, sources) do
     froms =
       intersperse_map(joins, ", ", fn
         %JoinExpr{qual: :inner, ix: ix, source: source} ->
@@ -228,7 +238,7 @@ defmodule MssqlEcto.Connection.Query do
           [join, " AS " | name]
 
         %JoinExpr{qual: qual} ->
-          error!(query, "PostgreSQL supports only inner joins on #{kind}, got: `#{qual}`")
+          error!(query, "Not implemented for `#{qual}`")
       end)
 
     wheres =
@@ -259,11 +269,20 @@ defmodule MssqlEcto.Connection.Query do
             {join, name} = get_source(query, sources, ix, source)
 
             prefix = query.prefix
+
             if is_nil(prefix) do
               [join_qual(qual), join, " AS ", name | join_on(qual, expr, sources, query)]
             else
               prefix = quote_name(query.prefix)
-              [join_qual(qual), prefix, ".", join, " AS ", name | join_on(qual, expr, sources, query)]
+
+              [
+                join_qual(qual),
+                prefix,
+                ".",
+                join,
+                " AS ",
+                name | join_on(qual, expr, sources, query)
+              ]
             end
         end)
     ]
@@ -372,9 +391,9 @@ defmodule MssqlEcto.Connection.Query do
   defp operator_to_boolean(:and), do: " AND "
   defp operator_to_boolean(:or), do: " OR "
 
-  def returning(%Ecto.Query{select: nil}, _sources, _), do: []
+  def output(%Ecto.Query{select: nil}, _sources, _), do: []
 
-  def returning(
+  def output(
         %Ecto.Query{select: %{fields: fields}} = query,
         _sources,
         operation
@@ -384,9 +403,9 @@ defmodule MssqlEcto.Connection.Query do
         | select_fields(fields, {{nil, operation, nil}}, query)
       ]
 
-  def returning([], _), do: []
+  def output([], _), do: []
 
-  def returning(returning, operation),
+  def output(returning, operation),
     do: [
       " OUTPUT "
       | Enum.map_join(returning, ", ", fn column ->
@@ -394,8 +413,22 @@ defmodule MssqlEcto.Connection.Query do
         end)
     ]
 
+  defp returning(%Ecto.Query{select: nil}, _sources), do: []
+
+  defp returning(%Ecto.Query{select: %{fields: fields}} = query, sources),
+    do: [" RETURNING " | select_fields(fields, sources, query)]
+
+  defp returning([]), do: []
+
+  defp returning(returning),
+    do: [
+      " RETURNING "
+      | intersperse_map(returning, ", ", &quote_name/1)
+    ]
+
   defp create_names(%{sources: sources}) do
-    create_names(sources, 0, tuple_size(sources)) |> List.to_tuple()
+    create_names(sources, 0, tuple_size(sources))
+    |> List.to_tuple()
   end
 
   defp create_names(sources, pos, limit) when pos < limit do

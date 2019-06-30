@@ -51,13 +51,37 @@ defmodule MssqlEcto.Connection.Query.Expression do
     quote_qualified_name(field, sources, idx)
   end
 
-  def expr({:&, _, [idx]}, sources, _query) do
-    {_, source, _} = elem(sources, idx)
-    source
+  def expr({:&, _, [idx]}, sources, query) do
+    {_source, name, _schema} = elem(sources, idx)
+
+    error!(
+      query,
+      "Microsoft SQL Server requires a schema module when using selector " <>
+        "#{inspect(name)} but none was given. " <>
+        "Please specify a schema or specify exactly which fields from " <>
+        "#{inspect(name)} you desire"
+    )
   end
 
+  def expr({:&, _, [idx, fields, _counter]}, sources, query) do
+    {_, name, schema} = elem(sources, idx)
+
+    if is_nil(schema) and is_nil(fields) do
+      error!(
+        query,
+        "Microsoft SQL Server requires a schema module when using selector " <>
+          "#{inspect(name)} but none was given. " <>
+          "Please specify a schema or specify exactly which fields from " <>
+          "#{inspect(name)} you desire"
+      )
+    end
+
+    intersperse_map(fields, ", ", &[name, ?. | quote_name(&1)])
+  end
+
+
   def expr({:in, _, [_left, []]}, _sources, _query) do
-    "false"
+    "0=1"
   end
 
   def expr({:in, _, [left, right]}, sources, query) when is_list(right) do
