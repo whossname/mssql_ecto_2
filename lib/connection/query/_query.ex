@@ -306,7 +306,7 @@ defmodule MssqlEcto.Connection.Query do
   end
 
   defp join_on(_qual, expr, sources, query),
-    do: [" ON (", Expression.expr(expr, sources, query), ")"]
+    do: [" ON ", Expression.paren_expr(expr, sources, query)]
 
   defp join_qual(:inner), do: "INNER JOIN "
   defp join_qual(:inner_lateral), do: "INNER JOIN LATERAL "

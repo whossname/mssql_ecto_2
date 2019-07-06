@@ -35,6 +35,9 @@ defmodule MssqlEcto.Connection.Query.Expression do
     expr(expr, sources, query)
   end
 
+  def paren_expr(false, _sources, _query), do: "(0=1)"
+  def paren_expr(true, _sources, _query), do: "(1=1)"
+
   def paren_expr(expr, sources, query) do
     [?(, expr(expr, sources, query), ?)]
   end
@@ -189,7 +192,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr(nil, _sources, _query), do: "NULL"
-  def expr(true, _sources, _query), do: "1=1"
+  def expr(true, _sources, _query), do: "1"
   def expr(false, _sources, _query), do: "FALSE"
 
   def expr(literal, _sources, _query) when is_binary(literal) do
