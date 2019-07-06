@@ -128,7 +128,8 @@ defmodule MssqlEcto.UpdateAllTest do
              ~s{UPDATE s0 SET "x" = 0 OUTPUT INSERTED."id", INSERTED."x", INSERTED."y", INSERTED."z", INSERTED."w" FROM "schema" AS s0}
   end
 
-  @tag skip: "Arrays not supported"
+  # TODO why was this skipped?
+  #@tag skip: "Arrays not supported"
   test "update all array ops" do
     query =
       from(m in Schema, update: [push: [w: 0]])

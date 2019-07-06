@@ -304,7 +304,8 @@ defmodule MssqlEcto.SelectTest do
              ~s{SELECT 'TRUE' FROM "schema" AS s0 OFFSET 5 ROWS FETCH NEXT 3 ROWS ONLY}
   end
 
-  @tag skip: "Not yet supported"
+  # TODO why was this skipped?
+  #@tag skip: "Not yet supported"
   test "lock" do
     query =
       Schema
