@@ -5,7 +5,7 @@ if Code.ensure_loaded?(Mssqlex) do
     @default_port 1433
     @behaviour Ecto.Adapters.SQL.Connection
 
-    alias MssqlEcto.Connection.{Constraints, DDL, Query}
+    alias MssqlEcto.Connection.{DDL, Query}
 
     import MssqlEcto.Connection.Helper
     require Logger
@@ -20,16 +20,7 @@ if Code.ensure_loaded?(Mssqlex) do
     end
 
     @impl true
-    def to_constraints(
-          %Mssqlex.Error{
-            odbc_code: odbc_code,
-            message: message,
-            constraint_violations: constraint_violations
-          } = error
-        ) do
-      Logger.debug(error)
-      Constraints.to_constraints(odbc_code, message, constraint_violations)
-    end
+    def to_constraints(%Mssqlex.Error{} = error), do: error.constraint_violations
 
     ## Query
     @impl true
@@ -113,8 +104,7 @@ if Code.ensure_loaded?(Mssqlex) do
           {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
         end)
 
-      {filters, _count} =
-        intersperse_reduce(filters, " AND ", count, &condition_reducer/2)
+      {filters, _count} = intersperse_reduce(filters, " AND ", count, &condition_reducer/2)
 
       [
         "UPDATE ",
