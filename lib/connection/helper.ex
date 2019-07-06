@@ -6,6 +6,14 @@ defmodule MssqlEcto.Connection.Helper do
     {expr || Expression.expr(source, sources, query), name}
   end
 
+  def add_prefix(nil, name) do
+    name
+  end
+
+  def add_prefix( prefix, name) do
+    [quote_name(prefix), ".", name]
+  end
+
   def quote_qualified_name(name, sources, ix) do
     {_, source, _} = elem(sources, ix)
     [source, ?. | quote_name(name)]

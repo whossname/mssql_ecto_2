@@ -177,15 +177,9 @@ defmodule MssqlEcto.Connection.Query do
     error!(query, "table hints are not implemented")
   end
 
-  defp from(%{from: %{source: source}, prefix: nil} = query, sources) do
-    {from, name} = get_source(query, sources, 0, source)
-    [" FROM ", from, " AS " | name]
-  end
-
   defp from(%{from: %{source: source}, prefix: prefix} = query, sources) do
-    prefix = quote_name(prefix)
     {from, name} = get_source(query, sources, 0, source)
-    [" FROM ", prefix, ".", from, " AS " | name]
+    [" FROM ", add_prefix(prefix, from), " AS " | name]
   end
 
   defp update_fields(%{updates: updates} = query, sources) do
