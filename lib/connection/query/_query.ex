@@ -449,19 +449,6 @@ defmodule MssqlEcto.Connection.Query do
         end)
     ]
 
-  defp returning(%Ecto.Query{select: nil}, _sources), do: []
-
-  defp returning(%Ecto.Query{select: %{fields: fields}} = query, sources),
-    do: [" RETURNING " | select_fields(fields, sources, query)]
-
-  defp returning([]), do: []
-
-  defp returning(returning),
-    do: [
-      " RETURNING "
-      | intersperse_map(returning, ", ", &quote_name/1)
-    ]
-
   defp create_names(%{sources: sources}) do
     create_names(sources, 0, tuple_size(sources))
     |> List.to_tuple()
