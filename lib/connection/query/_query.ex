@@ -43,8 +43,8 @@ defmodule MssqlEcto.Connection.Query do
     table_alias = [" FROM ", from, " AS ", name]
 
     fields = update_fields(query, sources)
-    {join, wheres} = using_join(query, "FROM", sources)
-    where = where(%{query | wheres: wheres ++ query.wheres}, sources)
+    join = join(query, sources)
+    where = where(query, sources)
 
     [
       prefix,
@@ -60,8 +60,8 @@ defmodule MssqlEcto.Connection.Query do
     sources = create_names(query)
     {from, name} = get_source(query, sources, 0, from)
 
-    {join, wheres} = using_join(query, "INNER JOIN", sources)
-    where = where(%{query | wheres: wheres ++ query.wheres}, sources)
+    join = join(query, sources)
+    where = where(query, sources)
 
     [
       "DELETE ",
