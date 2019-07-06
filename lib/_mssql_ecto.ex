@@ -43,7 +43,7 @@ defmodule MssqlEcto do
     case run_query(command, opts) do
       {:ok, _} ->
         :ok
-      {:error, %{postgres: %{code: :duplicate_database}}} ->
+      {:error, %{mssql: %{code: :duplicate_database}}} ->
         {:error, :already_up}
       {:error, error} ->
         {:error, Exception.message(error)}
@@ -63,7 +63,7 @@ defmodule MssqlEcto do
     case run_query(command, opts) do
       {:ok, _} ->
         :ok
-      {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
+      {:error, %{mssql: %{code: :invalid_catalog_name}}} ->
         {:error, :already_down}
       {:error, error} ->
         {:error, Exception.message(error)}
@@ -86,7 +86,7 @@ defmodule MssqlEcto do
   defp select_versions(table, config) do
     case run_query(~s[SELECT version FROM public."#{table}" ORDER BY version], config) do
       {:ok, %{rows: rows}} -> {:ok, Enum.map(rows, &hd/1)}
-      {:error, %{postgres: %{code: :undefined_table}}} -> {:ok, []}
+      {:error, %{mssql: %{code: :undefined_table}}} -> {:ok, []}
       {:error, _} = error -> error
     end
   end

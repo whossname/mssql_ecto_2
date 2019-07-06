@@ -229,7 +229,7 @@ defmodule MssqlEcto.Connection.Query do
   end
 
   defp update_op(command, _key, _value, _sources, query) do
-    error!(query, "unknown update operation #{inspect(command)} for PostgreSQL")
+    error!(query, "#{inspect(command)} not implemented for MSSQL")
   end
 
   defp using_join(%{joins: []}, _prefix, _sources), do: {[], []}
@@ -267,7 +267,7 @@ defmodule MssqlEcto.Connection.Query do
             hints: hints
           } ->
             if hints != [] do
-              error!(query, "table hints are not supported by PostgreSQL")
+              error!(query, "table hints are not implemented")
             end
 
             {join, name} = get_source(query, sources, ix, source)

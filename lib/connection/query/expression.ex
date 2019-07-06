@@ -131,6 +131,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
     |> parens_for_select()
   end
 
+  # TODO timestamp and date types? is this correct
   def expr({:datetime_add, _, [datetime, count, interval]}, sources, query) do
     [
       expr(datetime, sources, query),
@@ -236,6 +237,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
     ["interval '", count, ?\s, interval, ?\']
   end
 
+  # TODO numeric data type? Is this correct?
   defp interval(count, interval, sources, query) do
     [
       ?(,

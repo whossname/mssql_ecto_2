@@ -15,7 +15,7 @@ defmodule MssqlEcto.Connection.DDL do
     end
   end
 
-  # these are for Postgres, maybe irrelevant for MSSQL
+  # TODO these are for Postgres, maybe irrelevant for MSSQL
   defp ddl_log_level("DEBUG"), do: :debug
   defp ddl_log_level("LOG"), do: :info
   defp ddl_log_level("INFO"), do: :info
