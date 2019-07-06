@@ -386,10 +386,10 @@ defmodule MssqlEcto.SelectTest do
 
     assert query == ~s{SELECT downcase(s0."x", ?1) FROM "schema" AS s0}
 
-    query = Schema |> select([], fragment(title: 2)) |> parse()
+    query = Schema |> select([], fragment(title: 2))
 
     assert_raise Ecto.QueryError, fn ->
-      query
+     parse(query)
     end
   end
 
