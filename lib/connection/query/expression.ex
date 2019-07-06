@@ -91,8 +91,16 @@ defmodule MssqlEcto.Connection.Query.Expression do
     [expr(left, sources, query), " IN (", args, ?)]
   end
 
-  def expr({:in, _, [left, {:^, _, [ix, _]}]}, sources, query) do
-    [expr(left, sources, query), " = ANY(?", Integer.to_string(ix + 1), ?)]
+  def expr({:in, _, [_, {:^, _, [_, 0]}]}, _sources, _query) do
+    "0=1"
+  end
+
+  def expr({:in, _, [left, {:^, _, [ix, length]}]}, sources, query) do
+    args =
+      Enum.map((ix + 1)..(ix + length), fn i -> [??, to_string(i)] end)
+      |> Enum.intersperse(?,)
+
+    [expr(left, sources, query), " IN (", args, ?)]
   end
 
   def expr({:in, _, [left, right]}, sources, query) do
@@ -107,8 +115,12 @@ defmodule MssqlEcto.Connection.Query.Expression do
     ["NOT (", expr(expr, sources, query), ?)]
   end
 
-  def expr({:fragment, _, [kw]}, _sources, query) when is_list(kw) or tuple_size(kw) == 3 do
-    error!(query, "PostgreSQL adapter does not support keyword or interpolated fragments")
+  def expr({:fragment, _, [kw]}, _sources, query)
+      when is_list(kw) or tuple_size(kw) == 3 do
+    error!(
+      query,
+      "Microsoft SQL Server adapter does not support keyword or interpolated fragments"
+    )
   end
 
   def expr({:fragment, _, parts}, sources, query) do
@@ -184,7 +196,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
 
   def expr(%Ecto.Query.Tagged{value: binary, type: :binary}, _sources, _query)
       when is_binary(binary) do
-    ["'\\x", Base.encode16(binary, case: :lower) | "'::bytea"]
+    ["0x", Base.encode16(binary, case: :lower)]
   end
 
   def expr(%Ecto.Query.Tagged{value: other, type: type}, sources, query) do
@@ -193,7 +205,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
 
   def expr(nil, _sources, _query), do: "NULL"
   def expr(true, _sources, _query), do: "1"
-  def expr(false, _sources, _query), do: "FALSE"
+  def expr(false, _sources, _query), do: "0"
 
   def expr(literal, _sources, _query) when is_binary(literal) do
     [?\', escape_string(literal), ?\']
@@ -204,7 +216,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr(literal, _sources, _query) when is_float(literal) do
-    [Float.to_string(literal) | "::float"]
+    [Float.to_string(literal)]
   end
 
   defp parens_for_select([first_expr | _] = expr) do
