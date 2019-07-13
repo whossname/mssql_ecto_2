@@ -37,9 +37,11 @@ defmodule MssqlEcto.Mixfile do
 
       {:ecto_sql, "~> 3.1"},
 
+      # tooling
       {:ex_doc, "~> 0.15", only: :dev, runtime: false},
+      {:dialyxir, "~> 0.4", only: [:dev]},
       {:excoveralls, "~> 0.6", only: :test},
-      {:inch_ex, "~> 0.5", only: :docs}
+      {:inch_ex, "~> 0.5", only: :docs},
     ]
   end
 

@@ -13,6 +13,8 @@ if Code.ensure_loaded?(Mssqlex) do
     ## Module and Options
 
     @impl true
+
+    @spec child_spec(Keyword.t()) :: Supervisor.Spec.spec()
     def child_spec(opts) do
       opts
       |> Keyword.put_new(:port, @default_port)
