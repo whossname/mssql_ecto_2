@@ -232,27 +232,6 @@ defmodule MssqlEcto.Connection.Query do
     error!(query, "#{inspect(command)} not implemented for MSSQL")
   end
 
-  defp using_join(%{joins: []}, _prefix, _sources), do: {[], []}
-
-  defp using_join(%{joins: joins} = query, prefix, sources) do
-    froms =
-      intersperse_map(joins, ", ", fn
-        %JoinExpr{qual: :inner, ix: ix, source: source} ->
-          {join, name} = get_source(query, sources, ix, source)
-          [join, " AS " | name]
-
-        %JoinExpr{qual: qual} ->
-          error!(query, "Not implemented for `#{qual}`")
-      end)
-
-    wheres =
-      for %JoinExpr{on: %QueryExpr{expr: value} = expr} <- joins,
-          value != true,
-          do: expr |> Map.put(:__struct__, BooleanExpr) |> Map.put(:op, :and)
-
-    {[?\s, prefix, ?\s | froms], wheres}
-  end
-
   defp join(%{joins: []}, _sources), do: []
 
   defp join(%{joins: joins} = query, sources) do
