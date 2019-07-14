@@ -6,7 +6,14 @@ defmodule MssqlEcto.Connection.DDL do
   @drops [:drop, :drop_if_exists]
 
   def logs(%Mssqlex.Result{} = result) do
-    %{messages: messages} = result
+    messages =
+      case result do
+        %{messages: messages} ->
+          messages
+
+        _ ->
+          []
+      end
 
     for message <- messages do
       %{message: message, severity: severity} = message

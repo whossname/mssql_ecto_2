@@ -2,7 +2,7 @@ defmodule MssqlEcto do
   # Inherit all behaviour from Ecto.Adapters.SQL
   use Ecto.Adapters.SQL,
     driver: :mssqlex,
-    migration_lock: "FOR UPDATE"
+    migration_lock: ""
 
   # And provide a custom storage implementation
   @behaviour Ecto.Adapter.Storage

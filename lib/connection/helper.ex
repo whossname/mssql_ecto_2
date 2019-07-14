@@ -114,7 +114,9 @@ defmodule MssqlEcto.Connection.Helper do
   def ecto_to_db(:map), do: "nvarchar(4000)"
   def ecto_to_db({:map, _}), do: "nvarchar(4000)"
   def ecto_to_db(:utc_datetime), do: "datetime2"
+  def ecto_to_db(:utc_datetime_usec), do: "datetime2"
   def ecto_to_db(:naive_datetime), do: "datetime2"
+  def ecto_to_db(:naive_datetime_usec), do: "datetime2"
   def ecto_to_db(:timestamp), do: "datetime2"
   def ecto_to_db(other), do: Atom.to_string(other)
 

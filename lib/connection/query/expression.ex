@@ -47,7 +47,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr({:^, [], [ix]}, _sources, _query) do
-    [?? | Integer.to_string(ix + 1)]
+    [?$ | Integer.to_string(ix + 1)]
   end
 
   def expr({{:., _, [{:&, _, [idx]}, field]}, _, []}, sources, _query) when is_atom(field) do
