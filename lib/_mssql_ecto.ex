@@ -8,8 +8,6 @@ defmodule MssqlEcto do
   @behaviour Ecto.Adapter.Storage
   @behaviour Ecto.Adapter.Structure
 
-  @default_maintenance_database "mssql"
-
   @doc """
   All Ecto extensions for Mssqlex.
   """
@@ -32,8 +30,7 @@ defmodule MssqlEcto do
     database =
       Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
 
-    maintenance_database = Keyword.get(opts, :maintenance_database, @default_maintenance_database)
-    opts = Keyword.put(opts, :database, maintenance_database)
+    opts = Keyword.put(opts, :database, nil)
 
     command =
       ~s(CREATE DATABASE #{database})
@@ -63,8 +60,7 @@ defmodule MssqlEcto do
       Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
 
     command = "DROP DATABASE #{database}"
-    maintenance_database = Keyword.get(opts, :maintenance_database, @default_maintenance_database)
-    opts = Keyword.put(opts, :database, maintenance_database)
+    opts = Keyword.put(opts, :database, nil)
 
     case run_query(command, opts) do
       {:ok, _} ->
@@ -172,6 +168,7 @@ defmodule MssqlEcto do
     task =
       Task.Supervisor.async_nolink(pid, fn ->
         {:ok, conn} = Mssqlex.start_link(opts)
+
         value = Mssqlex.query(conn, sql, [], opts)
         GenServer.stop(conn)
         value
@@ -179,8 +176,9 @@ defmodule MssqlEcto do
 
     timeout = Keyword.get(opts, :timeout, 15_000)
 
-    result = Task.yield(task, timeout) || Task.shutdown(task)
-    case result do
+    task_return = Task.yield(task, timeout) || Task.shutdown(task)
+
+    case task_return do
       {:ok, {:ok, result}} ->
         {:ok, result}
 
