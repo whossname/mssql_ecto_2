@@ -127,7 +127,7 @@ defmodule MssqlEcto.JoinTest do
 
     assert query ==
              ~s{SELECT s1."x" FROM "comments" AS c0 } <>
-               ~s{INNER JOIN (SELECT p0."x" AS "x", p0."y" AS "y" FROM "posts" AS p0 WHERE (p0."title" = ?1)) AS s1 ON (1=1)}
+               ~s{INNER JOIN (SELECT p0."x" AS "x", p0."y" AS "y" FROM "posts" AS p0 WHERE (p0."title" = ?)) AS s1 ON (1=1)}
 
     posts =
       subquery(
@@ -144,7 +144,7 @@ defmodule MssqlEcto.JoinTest do
 
     assert query ==
              ~s{SELECT s1."x", s1."z" FROM "comments" AS c0 } <>
-               ~s{INNER JOIN (SELECT p0."x" AS "x", p0."y" AS "z" FROM "posts" AS p0 WHERE (p0."title" = ?1)) AS s1 ON (1=1)}
+               ~s{INNER JOIN (SELECT p0."x" AS "x", p0."y" AS "z" FROM "posts" AS p0 WHERE (p0."title" = ?)) AS s1 ON (1=1)}
   end
 
   test "join with prefix" do
@@ -175,9 +175,9 @@ defmodule MssqlEcto.JoinTest do
       |> parse()
 
     assert query ==
-             ~s{SELECT s0."id", ?1 FROM "schema" AS s0 INNER JOIN } <>
-               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?2) AS f1 ON (1=1) } <>
-               ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?3))}
+             ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN } <>
+               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?) AS f1 ON (1=1) } <>
+               ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?))}
   end
 
   test "join with fragment and on defined" do
@@ -188,7 +188,7 @@ defmodule MssqlEcto.JoinTest do
       |> parse()
 
     assert query ==
-             ~s{SELECT s0."id", ?1 FROM "schema" AS s0 INNER JOIN } <>
+             ~s{SELECT s0."id", ? FROM "schema" AS s0 INNER JOIN } <>
                ~s{(SELECT * FROM schema2) AS f1 ON (f1."id" = s0."id")}
   end
 
@@ -210,8 +210,8 @@ defmodule MssqlEcto.JoinTest do
 
     assert query ==
              ~s{SELECT s0."id", f1."z" FROM "schema" AS s0 INNER JOIN LATERAL } <>
-               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?1) AS f1 ON (1=1) } <>
-               ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?2))}
+               ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0."x" AND s2.field = ?) AS f1 ON (1=1) } <>
+               ~s{WHERE ((s0."id" > 0) AND (s0."id" < ?))}
   end
 
   test "association join belongs_to" do

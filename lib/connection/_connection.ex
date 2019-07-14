@@ -103,7 +103,7 @@ if Code.ensure_loaded?(Mssqlex) do
     def update(prefix, table, fields, filters, returning) do
       {fields, count} =
         intersperse_reduce(fields, ", ", 1, fn field, acc ->
-          {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
+          {[quote_name(field), " = ?"], acc + 1}
         end)
 
       {filters, _count} = intersperse_reduce(filters, " AND ", count, &condition_reducer/2)
@@ -137,11 +137,11 @@ if Code.ensure_loaded?(Mssqlex) do
     end
 
     defp condition_reducer({field, _value}, acc) do
-      {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
+      {[quote_name(field), " = ?"], acc + 1}
     end
 
     defp condition_reducer(field, acc) do
-      {[quote_name(field), " = ?" | Integer.to_string(acc)], acc + 1}
+      {[quote_name(field), " = ?"], acc + 1}
     end
 
     # DDL

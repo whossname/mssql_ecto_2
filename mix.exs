@@ -36,6 +36,7 @@ defmodule MssqlEcto.Mixfile do
       {:mssqlex, path: "../mssqlex"},
 
       {:ecto_sql, "~> 3.1"},
+      {:db_connection, path: "../db_connection", override: true},
 
       # tooling
       {:ex_doc, "~> 0.15", only: :dev, runtime: false},

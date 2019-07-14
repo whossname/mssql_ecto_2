@@ -6,20 +6,20 @@ defmodule MssqlEcto.DeleteTest do
       SQL.delete(nil, "schema", [:x, :y], [])
       |> IO.iodata_to_binary()
 
-    assert query == ~s{DELETE FROM "schema" WHERE "x" = ?1 AND "y" = ?2}
+    assert query == ~s{DELETE FROM "schema" WHERE "x" = ? AND "y" = ?}
 
     query =
       SQL.delete(nil, "schema", [:x, :y], [:z])
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{DELETE FROM "schema" OUTPUT DELETED."z" WHERE "x" = ?1 AND "y" = ?2}
+             ~s{DELETE FROM "schema" OUTPUT DELETED."z" WHERE "x" = ? AND "y" = ?}
 
     query =
       SQL.delete("prefix", "schema", [:x, :y], [])
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{DELETE FROM "prefix"."schema" WHERE "x" = ?1 AND "y" = ?2}
+             ~s{DELETE FROM "prefix"."schema" WHERE "x" = ? AND "y" = ?}
   end
 end

@@ -136,7 +136,7 @@ defmodule MssqlEcto.Connection.Query do
         {[?(, all(query), ?)], counter + params_counter}
 
       _, counter ->
-        {[?$ | Integer.to_string(counter)], counter + 1}
+        {[??], counter + 1}
     end)
   end
 

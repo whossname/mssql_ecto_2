@@ -9,7 +9,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") OUTPUT INSERTED."id" VALUES (?1,?2)}
+             ~s{INSERT INTO "schema" ("x","y") OUTPUT INSERTED."id" VALUES (?,?)}
 
     query =
       SQL.insert(
@@ -23,7 +23,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") OUTPUT INSERTED."id" VALUES (?1,?2),(DEFAULT,?3)}
+             ~s{INSERT INTO "schema" ("x","y") OUTPUT INSERTED."id" VALUES (?,?),(DEFAULT,?)}
 
     query =
       SQL.insert(nil, "schema", [], [[]], {:raise, [], []}, [:id])
@@ -52,7 +52,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT DO NOTHING}
+             ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON CONFLICT DO NOTHING}
 
     query =
       SQL.insert(
@@ -66,7 +66,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO NOTHING}
+             ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON CONFLICT ("x","y") DO NOTHING}
 
     update = from("schema", update: [set: [z: "foo"]]) |> normalize(:update_all)
 
@@ -77,7 +77,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" AS s0 ("x","y") OUTPUT INSERTED."z" VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = 'foo'}
+             ~s{INSERT INTO "schema" AS s0 ("x","y") OUTPUT INSERTED."z" VALUES (?,?) ON CONFLICT ("x","y") DO UPDATE SET "z" = 'foo'}
 
     update =
       from("schema", update: [set: [z: ^"foo"]], where: [w: true])
@@ -90,7 +90,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" AS s0 ("x","y") OUTPUT INSERTED."z" VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = ?3 WHERE (s0."w" = TRUE)}
+             ~s{INSERT INTO "schema" AS s0 ("x","y") OUTPUT INSERTED."z" VALUES (?,?) ON CONFLICT ("x","y") DO UPDATE SET "z" = ?3 WHERE (s0."w" = TRUE)}
 
     # For :replace_all
     query =
@@ -105,7 +105,7 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("id") DO UPDATE SET "x" = EXCLUDED."x","y" = EXCLUDED."y"}
+             ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON CONFLICT ("id") DO UPDATE SET "x" = EXCLUDED."x","y" = EXCLUDED."y"}
 
     query =
       SQL.insert(
@@ -119,6 +119,6 @@ defmodule MssqlEcto.InsertTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT DO UPDATE SET "x" = EXCLUDED."x","y" = EXCLUDED."y"}
+             ~s{INSERT INTO "schema" ("x","y") VALUES (?,?) ON CONFLICT DO UPDATE SET "x" = EXCLUDED."x","y" = EXCLUDED."y"}
   end
 end

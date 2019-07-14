@@ -47,7 +47,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr({:^, [], [ix]}, _sources, _query) do
-    [?$ | Integer.to_string(ix + 1)]
+    [??]
   end
 
   def expr({{:., _, [{:&, _, [idx]}, field]}, _, []}, sources, _query) when is_atom(field) do
@@ -97,7 +97,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
 
   def expr({:in, _, [left, {:^, _, [ix, length]}]}, sources, query) do
     args =
-      Enum.map((ix + 1)..(ix + length), fn i -> [??, to_string(i)] end)
+      Enum.map((ix + 1)..(ix + length), fn i -> [??] end)
       |> Enum.intersperse(?,)
 
     [expr(left, sources, query), " IN (", args, ?)]

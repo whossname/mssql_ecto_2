@@ -86,7 +86,7 @@ defmodule MssqlEcto.UpdateAllTest do
       |> IO.iodata_to_binary()
 
     assert query ==
-             ~s{UPDATE s0 SET "x" = ?1 FROM "schema" AS s0}
+             ~s{UPDATE s0 SET "x" = ? FROM "schema" AS s0}
 
     query =
       Schema

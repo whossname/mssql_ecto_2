@@ -34,7 +34,7 @@ defmodule MssqlEcto.Connection.DDL do
   defp ddl_log_level(_severity), do: :info
 
   def table_exists_query(table) do
-    {"SELECT TOP 1 true FROM information_schema.tables WHERE table_name = ?1 AND table_schema = current_schema()",
+    {"SELECT TOP 1 true FROM information_schema.tables WHERE table_name = ? AND table_schema = current_schema()",
      [table]}
   end
 
