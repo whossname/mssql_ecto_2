@@ -1,8 +1,7 @@
 ecto = Mix.Project.deps_paths()[:ecto]
 ecto = "#{ecto}/integration_test/cases"
 
-Ecto.Integration.TestRepo.__info__(:compile)
-
+# these are not going to work until sandbox works
 Code.require_file("assoc.exs", ecto)
 Code.require_file("interval.exs", ecto)
 Code.require_file("joins.exs", ecto)
