@@ -46,7 +46,7 @@ defmodule MssqlEcto.Connection.Query.Expression do
     [?(, Query.all(query), ?)]
   end
 
-  def expr({:^, [], [ix]}, _sources, _query) do
+  def expr({:^, [], [_]}, _sources, _query) do
     [??]
   end
 
@@ -95,9 +95,9 @@ defmodule MssqlEcto.Connection.Query.Expression do
     "0=1"
   end
 
-  def expr({:in, _, [left, {:^, _, [ix, length]}]}, sources, query) do
+  def expr({:in, _, [left, {:^, _, [_ix, length]}]}, sources, query) do
     args =
-      Enum.map((ix + 1)..(ix + length), fn i -> [??] end)
+      Enum.map(1..length, fn _ -> [??] end)
       |> Enum.intersperse(?,)
 
     [expr(left, sources, query), " IN (", args, ?)]
@@ -112,7 +112,13 @@ defmodule MssqlEcto.Connection.Query.Expression do
   end
 
   def expr({:not, _, [expr]}, sources, query) do
-    ["NOT (", expr(expr, sources, query), ?)]
+    case expr do
+      {fun, _, _} when fun in @binary_ops ->
+        ["NOT (", expr(expr, sources, query), ?)]
+
+      _ ->
+        ["~(", expr(expr, sources, query), ?)]
+    end
   end
 
   def expr({:fragment, _, [kw]}, _sources, query)

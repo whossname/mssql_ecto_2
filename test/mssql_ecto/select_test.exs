@@ -363,7 +363,7 @@ defmodule MssqlEcto.SelectTest do
 
     query = Schema |> select([r], not is_nil(r.x)) |> parse()
 
-    assert query == ~s{SELECT NOT (s0."x" IS NULL) FROM "schema" AS s0}
+    assert query == ~s{SELECT ~(s0."x" IS NULL) FROM "schema" AS s0}
   end
 
   test "fragments" do
